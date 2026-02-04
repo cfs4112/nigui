@@ -1,0 +1,45 @@
+{
+  "devices": ["Dev1"],
+  "signals": {
+    "led1": {
+      "type": "output",
+      "pin": "p0.0",
+      "label": "LED 1",
+      "on_color": "green",
+      "off_color": "gray",
+      "secondary_label": {"on": "Lit", "off": "Off"}
+    },
+    "switch1": {
+      "type": "input",
+      "pin": "p1.0",
+      "active_high": true
+    },
+    "power_main": {
+      "type": "power",
+      "pin": "p2.0",
+      "label": "Main Power",
+      "on_color": "red",
+      "off_color": "black",
+      "cooldown": 5
+    }
+  },
+  "groups": {
+    "enable_all": {
+      "signals": ["led1"],
+      "state": true
+    },
+    "disable_all": {
+      "signals": ["led1"],
+      "state": false
+    }
+  },
+  "sequences": {
+    "startup_sequence": [
+      {"action": "set", "signal": "power_main", "value": true},
+      {"action": "wait", "duration": 3.0},
+      {"action": "set", "signal": "led1", "value": true},
+      {"action": "wait_input", "signal": "switch1", "value": true},
+      {"action": "set", "signal": "led1", "value": false}
+    ]
+  }
+}
