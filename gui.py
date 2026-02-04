@@ -1,6 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
+import json
+import os
 from tabs.utilities_tab import setup_settings_frame
+from tabs.device_tab import create_device_tab
 
 root = tk.Tk()
 root.title("Control Panel")
@@ -11,6 +14,15 @@ notebook.pack(fill="both", expand=True, padx=10, pady=10)
 
 control_panel = ttk.Frame(notebook)
 notebook.add(control_panel, text="Control Panel")
+
+# Load config and add device tabs
+config_file = 'config.json'
+if os.path.exists(config_file):
+    with open(config_file, 'r') as f:
+        config = json.load(f)
+    devices = config.get('devices', [])
+    for dev in devices:
+        create_device_tab(notebook, dev)
 
 settings_frame = ttk.Frame(root)
 setup_settings_frame(settings_frame, root, notebook)

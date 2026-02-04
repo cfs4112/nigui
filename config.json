@@ -1,0 +1,8 @@
+{
+  "devices": [
+    "Dev1",
+    "Dev2"
+  ],
+  "selected_preset": "LC.json",
+  "max_devices": 30
+}
