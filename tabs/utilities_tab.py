@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from .device_tab import create_device_tab
 
-def setup_utilities_tab(tab, notebook):
+def setup_settings_frame(frame, root, notebook):
     # Device configuration
     def validate_num(value):
         if value == "":
@@ -13,11 +13,11 @@ def setup_utilities_tab(tab, notebook):
         except ValueError:
             return False
 
-    vcmd = (tab.register(validate_num), '%P')
+    vcmd = (frame.register(validate_num), '%P')
 
-    ttk.Label(tab, text="Number of NI Devices:").grid(row=0, column=0, padx=5, pady=5)
+    ttk.Label(frame, text="Number of NI Devices:").grid(row=0, column=0, padx=5, pady=5)
     num_devices_var = tk.IntVar(value=1)
-    num_devices_spin = tk.Spinbox(tab, from_=1, to=3, textvariable=num_devices_var, validate="key", validatecommand=vcmd)
+    num_devices_spin = tk.Spinbox(frame, from_=1, to=3, textvariable=num_devices_var, validate="key", validatecommand=vcmd)
     num_devices_spin.grid(row=0, column=1, padx=5, pady=5)
 
     device_labels = []
@@ -33,9 +33,9 @@ def setup_utilities_tab(tab, notebook):
             device_entries.pop()
         # Add new
         for i in range(len(device_entries), num):
-            label = ttk.Label(tab, text=f"Device {i+1} Name:")
+            label = ttk.Label(frame, text=f"Device {i+1} Name:")
             label.grid(row=i+1, column=0, padx=5, pady=5)
-            entry = ttk.Entry(tab)
+            entry = ttk.Entry(frame)
             entry.grid(row=i+1, column=1, padx=5, pady=5)
             entry.insert(0, f"Dev{i+1}")
             device_labels.append(label)
@@ -51,10 +51,10 @@ def setup_utilities_tab(tab, notebook):
         # Remove existing device tabs
         for tab_id in notebook.tabs():
             tab_text = notebook.tab(tab_id, "text")
-            if tab_text not in ["Control Panel", "Utilities"]:
+            if tab_text not in ["Control Panel"]:
                 notebook.forget(tab_id)
         # Add tabs for each device
         for dev in devices:
             create_device_tab(notebook, dev)
 
-    ttk.Button(tab, text="Apply", command=apply_devices).grid(row=11, column=0, columnspan=2, pady=10)
+    ttk.Button(frame, text="Apply", command=apply_devices).grid(row=11, column=0, columnspan=2, pady=10)
