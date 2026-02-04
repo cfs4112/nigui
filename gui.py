@@ -4,10 +4,14 @@ import json
 import os
 from tabs.utilities_tab import setup_settings_frame
 from tabs.device_tab import create_device_tab
+from state import StateManager
 
 root = tk.Tk()
 root.title("Control Panel")
 root.geometry("600x400")
+root.minsize(600, 400)
+
+state_manager = StateManager()
 
 notebook = ttk.Notebook(root)
 notebook.pack(fill="both", expand=True, padx=10, pady=10)
@@ -22,10 +26,10 @@ if os.path.exists(config_file):
         config = json.load(f)
     devices = config.get('devices', [])
     for dev in devices:
-        create_device_tab(notebook, dev)
+        create_device_tab(notebook, dev, state_manager)
 
 settings_frame = ttk.Frame(root)
-setup_settings_frame(settings_frame, root, notebook)
+setup_settings_frame(settings_frame, root, notebook, state_manager)
 
 # Bottom frame for settings button
 bottom_frame = ttk.Frame(root)

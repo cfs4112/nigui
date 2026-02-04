@@ -4,7 +4,7 @@ import json
 import os
 from .device_tab import create_device_tab
 
-def setup_settings_frame(frame, root, notebook):
+def setup_settings_frame(frame, root, notebook, state_manager):
     # Load config
     config_file = 'config.json'
     if os.path.exists(config_file):
@@ -99,7 +99,7 @@ def setup_settings_frame(frame, root, notebook):
                 notebook.forget(tab_id)
         # Add tabs for each device
         for dev in devices:
-            create_device_tab(notebook, dev)
+            create_device_tab(notebook, dev, state_manager)
 
     # Apply button
     apply_frame = ttk.Frame(frame)
