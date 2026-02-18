@@ -99,7 +99,7 @@ def create_device_tab(notebook, dev, state_manager):
             buttons[key] = chk
     
     # Device diagram
-    pin_functions = { 1: "GND", 2: "+5V", 3: "p0.0", 4: "p0.1", 5: "p0.2", 6: "p0.3", 7: "GND", 8: "GND", 9: "p0.4", 10: "p0.5", 11: "p0.6", 12: "p0.7", 13: "p1.0", 14: "p1.1", 15: "p1.2", 16: "p1.3", 17: "p1.4", 18: "p1.5", 19: "p1.6", 20: "p1.7", 21: "p2.0", 22: "p2.1", 23: "p2.2", 24: "p2.3", 25: "GND", 26: "GND", 27: "p2.4", 28: "p2.5", 29: "p2.6", 30: "p2.7", 31: "+5V", 32: "GND" }
+    pin_functions = { 1: "GND", 2: "+5V", 3: "p0.0", 4: "p0.1", 5: "p0.2", 6: "p0.3", 7: "GND", 8: "GND", 9: "p0.4", 10: "p0.5", 11: "p0.6", 12: "p0.7", 13: "p1.0", 14: "p1.1", 15: "p1.2", 16: "p1.3", 17: "p2.0", 18: "p2.1", 19: "p2.2", 20: "p2.3", 21: "p2.4", 22: "p2.5", 23: "p2.6", 24: "p2.7", 25: "GND", 26: "GND", 27: "p1.4", 28: "p1.5", 29: "p1.6", 30: "p1.7", 31: "+5V", 32: "GND" }
 
     def open_diagram_window():
         nonlocal diagram_window
@@ -140,8 +140,8 @@ def create_device_tab(notebook, dev, state_manager):
         body.grid(row=1, column=1, rowspan=16, padx=10, pady=2, sticky="ns")
 
         for row in range(16):
-            # ---------- Left rail (pins 17–32) ----------
-            pin_left = 32 - row
+            # ---------- Left rail (pins 1–16) ----------
+            pin_left = row + 1
             func_left = pin_functions.get(pin_left, "NC")
 
             lbl_left = tk.Label(
@@ -161,8 +161,8 @@ def create_device_tab(notebook, dev, state_manager):
 
             lbl_left.grid(row=row+1, column=0, padx=2, pady=2)
 
-            # ---------- Right rail (pins 1–16) ----------
-            pin_right = 16 - row
+            # ---------- Right rail (pins 17–32) ----------
+            pin_right = 17 + row
             func_right = pin_functions.get(pin_right, "NC")
 
             lbl_right = tk.Label(
