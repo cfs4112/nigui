@@ -1,6 +1,10 @@
 {
 	"title": "Default Preset",
 	"info": "This is the default preset. It exists as an example for other presets.",
+	"window": {
+		"width": 900,
+		"height": 600
+	},
 	"layout": {
 		"controls": [
 			{
@@ -49,7 +53,7 @@
 				"pin": "p1.5",
 				"label": "Door Closed",
 				"active_level": "ACTIVE_HIGH",
-				"on_color": "#fa0000",
+				"on_color": "#FFA500",
 				"off_color": "#CAC9C8"
 			},
 			{
@@ -69,7 +73,7 @@
 				"pin": "p1.6",
 				"label": "",
 				"active_level": "ACTIVE_LOW",
-				"on_color": "#ffff00",
+				"on_color": "#FFA500",
 				"off_color": "#CAC9C8"
 			},
 			{
@@ -80,10 +84,24 @@
 				"label": "Main 24V",
 				"on_color": "#FF7043",
 				"off_color": "#CAC9C8",
-				"cooldown_seconds": 10,
+				"cooldown_seconds": 5,
 				"secondary_label": {
 					"on": "ARMED",
-					"off": "SAFE"
+					"off": "OFF"
+				}
+			},
+			{
+				"id": "example_power_2",
+				"type": "power",
+				"device": "Dev1",
+				"pin": "p2.1",
+				"label": "Debugger Power",
+				"on_color": "#FF7043",
+				"off_color": "#CAC9C8",
+				"cooldown_seconds": 2,
+				"secondary_label": {
+					"on": "ON",
+					"off": "OFF"
 				}
 			},
 			{

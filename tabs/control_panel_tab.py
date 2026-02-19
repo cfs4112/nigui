@@ -74,6 +74,7 @@ class OutputControl(ttk.Frame):
         self.on_color = on_color
         self.off_color = off_color
         self.secondary_label = secondary_label
+        self.base_label = label
         self.write_callback = write_callback
 
         self.columnconfigure(0, weight=1)
@@ -89,12 +90,6 @@ class OutputControl(ttk.Frame):
         tooltip_text = f"Device: {device_label}\nLine: {pin_label}"
         HoverTooltip(self.button, tooltip_text)
 
-        self.status = None
-        if self.secondary_label:
-            self.columnconfigure(1, weight=0)
-            self.status = tk.Label(self, width=10, relief="flat", padx=10, pady=6)
-            self.status.grid(row=0, column=1, sticky="nsew")
-
         self.refresh()
 
     def _status_text(self, is_on):
@@ -104,29 +99,113 @@ class OutputControl(ttk.Frame):
 
     def refresh(self):
         is_on = bool(self.state_manager.get_pin_state(self.device, self.pin))
-        if self.status is not None:
-            self.status.configure(text=self._status_text(is_on))
-            if self.on_color is not None and self.off_color is not None:
-                self.status.configure(bg=self.on_color if is_on else self.off_color)
+        if self.secondary_label:
+            self.button.configure(text=f"{self.base_label}: {self._status_text(is_on)}")
+        if self.on_color is not None and self.off_color is not None:
+            self.button.configure(
+                background=self.on_color if is_on else self.off_color,
+                activebackground=self.on_color if is_on else self.off_color,
+                foreground="#ffffff" if is_on else self.default_button_fg,
+            )
         else:
-            if self.on_color is not None and self.off_color is not None:
-                self.button.configure(
-                    background=self.on_color if is_on else self.off_color,
-                    activebackground=self.on_color if is_on else self.off_color,
-                    foreground="#ffffff" if is_on else self.default_button_fg,
-                )
-            else:
-                self.button.configure(
-                    background=self.default_button_bg,
-                    activebackground=self.default_button_bg,
-                    foreground=self.default_button_fg,
-                )
+            self.button.configure(
+                background=self.default_button_bg,
+                activebackground=self.default_button_bg,
+                foreground=self.default_button_fg,
+            )
 
     def set_state(self, value):
         self.state_manager.set_pin_state(self.device, self.pin, bool(value))
         if self.write_callback is not None:
             self.write_callback(self.device, self.pin, bool(value))
         self.refresh()
+
+    def toggle(self):
+        current = bool(self.state_manager.get_pin_state(self.device, self.pin))
+        self.set_state(not current)
+
+
+class PowerControl(ttk.Frame):
+    """UI control for a power-type signal with cooldown timer."""
+
+    def __init__(self, parent, state_manager, device, pin, label,
+                 on_color=None, off_color=None, secondary_label=None,
+                 cooldown_seconds=0, write_callback=None):
+        super().__init__(parent)
+        self.state_manager = state_manager
+        self.device = device
+        self.pin = pin
+        self.on_color = on_color
+        self.off_color = off_color
+        self.secondary_label = secondary_label
+        self.base_label = label
+        self.cooldown_seconds = int(cooldown_seconds or 0)
+        self.write_callback = write_callback
+        self._cooldown_after = None
+
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+
+        self.button = tk.Button(self, text=label, command=self.toggle)
+        self.button.grid(row=0, column=0, sticky="nsew")
+        self.default_button_bg = self.button.cget("background")
+        self.default_button_fg = self.button.cget("foreground")
+
+        device_label = self.device or "Unknown"
+        pin_label = self.pin or "Unknown"
+        tooltip_text = f"Device: {device_label}\nLine: {pin_label}"
+        HoverTooltip(self.button, tooltip_text)
+
+        self.cooldown_label = tk.Label(self, text="", fg="#b00020")
+        self.cooldown_label.grid(row=1, column=0, columnspan=2, sticky="w", pady=(2, 0))
+
+        self.refresh()
+
+    def _status_text(self, is_on):
+        if self.secondary_label:
+            return self.secondary_label.get("on") if is_on else self.secondary_label.get("off")
+        return "ON" if is_on else "OFF"
+
+    def _start_cooldown(self):
+        if self.cooldown_seconds <= 0:
+            return
+        if self._cooldown_after is not None:
+            self.after_cancel(self._cooldown_after)
+        self.button.configure(state="disabled")
+        self._tick_cooldown(self.cooldown_seconds)
+
+    def _tick_cooldown(self, remaining):
+        if remaining <= 0:
+            self.cooldown_label.configure(text="")
+            self.button.configure(state="normal")
+            self._cooldown_after = None
+            return
+        self.cooldown_label.configure(text=f"Cooldown {remaining}s")
+        self._cooldown_after = self.after(1000, lambda: self._tick_cooldown(remaining - 1))
+
+    def refresh(self):
+        is_on = bool(self.state_manager.get_pin_state(self.device, self.pin))
+        if self.secondary_label:
+            self.button.configure(text=f"{self.base_label}: {self._status_text(is_on)}")
+        if self.on_color is not None and self.off_color is not None:
+            self.button.configure(
+                background=self.on_color if is_on else self.off_color,
+                activebackground=self.on_color if is_on else self.off_color,
+                foreground="#ffffff" if is_on else self.default_button_fg,
+            )
+        else:
+            self.button.configure(
+                background=self.default_button_bg,
+                activebackground=self.default_button_bg,
+                foreground=self.default_button_fg,
+            )
+
+    def set_state(self, value):
+        self.state_manager.set_pin_state(self.device, self.pin, bool(value))
+        if self.write_callback is not None:
+            self.write_callback(self.device, self.pin, bool(value))
+        self.refresh()
+        self._start_cooldown()
 
     def toggle(self):
         current = bool(self.state_manager.get_pin_state(self.device, self.pin))
@@ -238,13 +317,16 @@ def create_control_panel_tab(notebook, state_manager):
 
     control_panel.update_preset_title = update_preset_title
 
+    content_frame = ttk.Frame(control_panel)
+    content_frame.pack(fill="both", expand=True)
+
     info = None
     if preset_info:
         info = ttk.Label(
             control_panel,
             text=preset_info
         )
-        info.pack(anchor="w", padx=10, pady=(0, 10))
+        info.pack(anchor="w", padx=10, pady=(0, 10), before=content_frame)
     else:
         preset_label.pack_configure(pady=(10, 2))
 
@@ -253,7 +335,7 @@ def create_control_panel_tab(notebook, state_manager):
         if new_info:
             if info is None:
                 info = ttk.Label(control_panel, text=new_info)
-                info.pack(anchor="w", padx=10, pady=(0, 10))
+                info.pack(anchor="w", padx=10, pady=(0, 10), before=content_frame)
             else:
                 info.configure(text=new_info)
             preset_label.pack_configure(pady=(10, 5))
@@ -265,23 +347,52 @@ def create_control_panel_tab(notebook, state_manager):
 
     control_panel.update_preset_info = update_preset_info
 
+
     def create_io_section():
         existing = getattr(control_panel, "io_section", None)
         if existing is not None and existing.winfo_exists():
             existing.destroy()
-        section = ttk.LabelFrame(control_panel, text="I/O", padding=(6, 4))
+        section = ttk.LabelFrame(content_frame, text="I/O", padding=(6, 4))
         section.pack(side="left", fill="y", expand=False, anchor="n", padx=6, pady=(0, 6))
         section.pack_propagate(True)
         control_panel.io_section = section
         return section
     io_section = create_io_section()
 
+    def create_power_section():
+        existing = getattr(control_panel, "power_section", None)
+        if existing is not None and existing.winfo_exists():
+            existing.destroy()
+        right_column = getattr(control_panel, "right_column", None)
+        if right_column is None or not right_column.winfo_exists():
+            right_column = ttk.Frame(content_frame)
+            right_column.pack(side="right", fill="both", expand=True, padx=6, pady=(0, 6))
+            control_panel.right_column = right_column
+        section = ttk.LabelFrame(right_column, text="Power", padding=(6, 4))
+        section.pack(side="bottom", anchor="se", fill="x")
+        section.columnconfigure(0, weight=1)
+        section.pack_propagate(True)
+        control_panel.power_section = section
+        return section
+
+    power_section = create_power_section()
+
     def build_io_controls(preset_path):
         output_controls = []
         input_controls = []
+        power_controls = []
         section = control_panel.io_section
         for child in section.winfo_children():
             child.destroy()
+
+        power_container = control_panel.power_section
+        for child in power_container.winfo_children():
+            child.destroy()
+
+        power_row = ttk.Frame(power_container)
+        power_row.grid(row=0, column=0, sticky="ew")
+        power_row.columnconfigure(0, weight=1)
+        power_index = 0
 
         configured_devices = set()
         if os.path.exists(config_file):
@@ -323,15 +434,35 @@ def create_control_panel_tab(notebook, state_manager):
                 )
                 input_widget.pack(fill="x", anchor="w", pady=2)
                 input_controls.append(input_widget)
+            elif control_type == "power":
+                power_widget = PowerControl(
+                    power_row,
+                    state_manager,
+                    control.get("device", ""),
+                    control.get("pin", ""),
+                    control.get("label", control.get("id", "")),
+                    on_color=control.get("on_color"),
+                    off_color=control.get("off_color"),
+                    secondary_label=control.get("secondary_label"),
+                    cooldown_seconds=control.get("cooldown_seconds", 0),
+                )
+                if power_widget.device not in configured_devices:
+                    power_widget.button.configure(state="disabled", foreground="#b00020")
+                power_widget.grid(row=0, column=power_index, padx=4, pady=2, sticky="ew")
+                power_row.columnconfigure(power_index, weight=1)
+                power_index += 1
+                power_controls.append(power_widget)
             elif control_type == "break":
                 spacer = ttk.Frame(section, height=8)
                 spacer.pack(fill="x", pady=4)
 
         control_panel.output_controls = output_controls
         control_panel.input_controls = input_controls
+        control_panel.power_controls = power_controls
 
     def rebuild_from_preset(preset_path):
         create_io_section()
+        create_power_section()
         build_io_controls(preset_path)
 
     control_panel.rebuild_from_preset = rebuild_from_preset
@@ -347,6 +478,12 @@ def create_control_panel_tab(notebook, state_manager):
             input_control.refresh()
 
     control_panel.refresh_input_controls = refresh_input_controls
+
+    def refresh_power_controls():
+        for power_control in getattr(control_panel, "power_controls", []):
+            power_control.refresh()
+
+    control_panel.refresh_power_controls = refresh_power_controls
 
     build_io_controls(preset_file)
 

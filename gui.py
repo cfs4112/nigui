@@ -52,8 +52,47 @@ class StateManager:
 
 root = tk.Tk()
 root.title("Control Panel")
-root.geometry("600x400")
 root.minsize(600, 400)
+
+def get_selected_preset_path(config_path="config.json"):
+    if os.path.exists(config_path):
+        with open(config_path, "r") as f:
+            config = json.load(f) or {}
+        preset_name = config.get("selected_preset", "default.json")
+        return os.path.join("presets", preset_name)
+    return os.path.join("presets", "default.json")
+
+def compute_initial_geometry(preset_path):
+    width = 600
+    height = 400
+    if not os.path.exists(preset_path):
+        return width, height
+    try:
+        with open(preset_path, "r") as f:
+            preset = json.load(f) or {}
+    except json.JSONDecodeError:
+        return width, height
+
+    window_cfg = preset.get("window", {})
+    preset_width = window_cfg.get("width")
+    preset_height = window_cfg.get("height")
+    if isinstance(preset_width, int) and isinstance(preset_height, int):
+        return max(width, preset_width), max(height, preset_height)
+
+    controls = preset.get("layout", {}).get("controls", [])
+    io_controls = [c for c in controls if c.get("type", "").lower() in {"output", "input", "break"}]
+    power_controls = [c for c in controls if c.get("type", "").lower() == "power"]
+
+    io_count = len(io_controls)
+    power_count = len(power_controls)
+
+    width = max(width, 520 + (140 * power_count))
+    height = max(height, 260 + (28 * io_count))
+    return width, height
+
+initial_preset_path = get_selected_preset_path()
+initial_width, initial_height = compute_initial_geometry(initial_preset_path)
+root.geometry(f"{initial_width}x{initial_height}")
 
 state_manager = StateManager()
 
@@ -71,6 +110,8 @@ def refresh_all_tabs(device, pin, value):
             tab_widget.refresh_output_controls()
         if hasattr(tab_widget, "refresh_input_controls"):
             tab_widget.refresh_input_controls()
+        if hasattr(tab_widget, "refresh_power_controls"):
+            tab_widget.refresh_power_controls()
 
 state_manager.register_update_callback(refresh_all_tabs)
 
@@ -94,6 +135,16 @@ btn_text = tk.StringVar(value="⚙ Settings")
 root.btn_text = btn_text
 settings_btn = ttk.Button(bottom_frame, textvariable=btn_text, command=lambda: toggle_view())
 settings_btn.pack(side=tk.RIGHT, padx=10, pady=5)
+
+size_var = tk.StringVar(value="")
+size_label = ttk.Label(bottom_frame, textvariable=size_var, anchor="w", foreground="#6e6e6e")
+
+def update_size_label(_event=None):
+    size_var.set(f"Window: {root.winfo_width()} x {root.winfo_height()}")
+
+update_size_label()
+root.bind("<Configure>", update_size_label)
+size_label.pack(side=tk.LEFT, padx=10, pady=5)
 
 def toggle_view():
     if notebook.winfo_ismapped():
