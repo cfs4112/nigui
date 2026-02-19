@@ -69,6 +69,8 @@ def refresh_all_tabs(device, pin, value):
             tab_widget.refresh_from_state()
         if hasattr(tab_widget, "refresh_output_controls"):
             tab_widget.refresh_output_controls()
+        if hasattr(tab_widget, "refresh_input_controls"):
+            tab_widget.refresh_input_controls()
 
 state_manager.register_update_callback(refresh_all_tabs)
 

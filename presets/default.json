@@ -39,13 +39,37 @@
 				"off_color": "#CAC9C8"
 			},
 			{
+				"id": "example_break_1",
+				"type": "break"
+			},
+			{
 				"id": "example_input",
 				"type": "input",
 				"device": "Dev1",
 				"pin": "p1.5",
 				"label": "Door Closed",
+				"active_level": "ACTIVE_HIGH",
+				"on_color": "#fa0000",
+				"off_color": "#CAC9C8"
+			},
+			{
+				"id": "example_input_2",
+				"type": "input",
+				"device": "Dev1",
+				"pin": "p1.6",
+				"label": "Window Closed",
 				"active_level": "ACTIVE_LOW",
-				"on_color": "#4CAF50",
+                "on_color": "#FFA500",
+				"off_color": "#CAC9C8"
+			},
+			{
+				"id": "example_input_3",
+				"type": "input",
+				"device": "Dev3",
+				"pin": "p1.6",
+				"label": "",
+				"active_level": "ACTIVE_LOW",
+				"on_color": "#ffff00",
 				"off_color": "#CAC9C8"
 			},
 			{

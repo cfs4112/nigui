@@ -133,6 +133,62 @@ class OutputControl(ttk.Frame):
         self.set_state(not current)
 
 
+class InputControl(ttk.Frame):
+    """UI control for an input-type signal in the control panel."""
+
+    def __init__(self, parent, state_manager, device, pin, label,
+                 on_color=None, off_color=None, active_level="ACTIVE_HIGH"):
+        super().__init__(parent)
+        self.state_manager = state_manager
+        self.device = device
+        self.pin = pin
+        self.on_color = on_color
+        self.off_color = off_color
+        self.active_level = (active_level or "ACTIVE_HIGH").upper()
+
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+
+        self.label = ttk.Label(self, text=label)
+        self.label.grid(row=0, column=0, sticky="w")
+
+        self.indicator = tk.Canvas(
+            self,
+            width=16,
+            height=16,
+            highlightthickness=0,
+            bd=0,
+            relief="flat",
+        )
+        self.indicator.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+        self._indicator_rect = self.indicator.create_rectangle(
+            0,
+            0,
+            15,
+            15,
+            fill=self.indicator.cget("background"),
+            outline="#5a5a5a",
+            width=1,
+        )
+
+        device_label = self.device or "Unknown"
+        pin_label = self.pin or "Unknown"
+        tooltip_text = f"Device: {device_label}\nLine: {pin_label}"
+        HoverTooltip(self.label, tooltip_text)
+        HoverTooltip(self.indicator, tooltip_text)
+
+        self.refresh()
+
+    def refresh(self):
+        raw_state = bool(self.state_manager.get_pin_state(self.device, self.pin))
+        is_active = raw_state if self.active_level == "ACTIVE_HIGH" else not raw_state
+        if self.on_color is not None and self.off_color is not None:
+            color = self.on_color if is_active else self.off_color
+        else:
+            color = self.indicator.cget("background")
+        self.indicator.itemconfig(self._indicator_rect, fill=color)
+
+
 def load_preset_data(preset_file, default_title="", default_info=""):
     if os.path.exists(preset_file):
         with open(preset_file, "r") as f:
@@ -209,21 +265,21 @@ def create_control_panel_tab(notebook, state_manager):
 
     control_panel.update_preset_info = update_preset_info
 
-    def create_outputs_section():
-        existing = getattr(control_panel, "outputs_section", None)
+    def create_io_section():
+        existing = getattr(control_panel, "io_section", None)
         if existing is not None and existing.winfo_exists():
             existing.destroy()
-        section = ttk.LabelFrame(control_panel, text="Outputs", padding=(6, 4))
+        section = ttk.LabelFrame(control_panel, text="I/O", padding=(6, 4))
         section.pack(side="left", fill="y", expand=False, anchor="n", padx=6, pady=(0, 6))
         section.pack_propagate(True)
-        control_panel.outputs_section = section
+        control_panel.io_section = section
         return section
+    io_section = create_io_section()
 
-    outputs_section = create_outputs_section()
-
-    def build_output_controls(preset_path):
+    def build_io_controls(preset_path):
         output_controls = []
-        section = control_panel.outputs_section
+        input_controls = []
+        section = control_panel.io_section
         for child in section.winfo_children():
             child.destroy()
 
@@ -238,28 +294,45 @@ def create_control_panel_tab(notebook, state_manager):
         controls = layout.get("controls", [])
 
         for control in controls:
-            if control.get("type", "").lower() != "output":
-                continue
-            output_widget = OutputControl(
-                section,
-                state_manager,
-                control.get("device", ""),
-                control.get("pin", ""),
-                control.get("label", control.get("id", "")),
-                on_color=control.get("on_color"),
-                off_color=control.get("off_color"),
-                secondary_label=control.get("secondary_label"),
-            )
-            if output_widget.device not in configured_devices:
-                output_widget.button.configure(state="disabled", foreground="#b00020")
-            output_widget.pack(fill="x", anchor="w", pady=2)
-            output_controls.append(output_widget)
+            control_type = control.get("type", "").lower()
+            if control_type == "output":
+                output_widget = OutputControl(
+                    section,
+                    state_manager,
+                    control.get("device", ""),
+                    control.get("pin", ""),
+                    control.get("label", control.get("id", "")),
+                    on_color=control.get("on_color"),
+                    off_color=control.get("off_color"),
+                    secondary_label=control.get("secondary_label"),
+                )
+                if output_widget.device not in configured_devices:
+                    output_widget.button.configure(state="disabled", foreground="#b00020")
+                output_widget.pack(fill="x", anchor="w", pady=2)
+                output_controls.append(output_widget)
+            elif control_type == "input":
+                input_widget = InputControl(
+                    section,
+                    state_manager,
+                    control.get("device", ""),
+                    control.get("pin", ""),
+                    control.get("label", control.get("id", "")),
+                    on_color=control.get("on_color"),
+                    off_color=control.get("off_color"),
+                    active_level=control.get("active_level", "ACTIVE_HIGH"),
+                )
+                input_widget.pack(fill="x", anchor="w", pady=2)
+                input_controls.append(input_widget)
+            elif control_type == "break":
+                spacer = ttk.Frame(section, height=8)
+                spacer.pack(fill="x", pady=4)
 
         control_panel.output_controls = output_controls
+        control_panel.input_controls = input_controls
 
     def rebuild_from_preset(preset_path):
-        create_outputs_section()
-        build_output_controls(preset_path)
+        create_io_section()
+        build_io_controls(preset_path)
 
     control_panel.rebuild_from_preset = rebuild_from_preset
 
@@ -269,6 +342,12 @@ def create_control_panel_tab(notebook, state_manager):
 
     control_panel.refresh_output_controls = refresh_output_controls
 
-    build_output_controls(preset_file)
+    def refresh_input_controls():
+        for input_control in getattr(control_panel, "input_controls", []):
+            input_control.refresh()
+
+    control_panel.refresh_input_controls = refresh_input_controls
+
+    build_io_controls(preset_file)
 
     return control_panel
