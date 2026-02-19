@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import tkinter as tk
 from tkinter import ttk
 
@@ -123,6 +124,137 @@ class OutputControl(ttk.Frame):
     def toggle(self):
         current = bool(self.state_manager.get_pin_state(self.device, self.pin))
         self.set_state(not current)
+
+
+class GroupControl(ttk.Frame):
+    """UI control for a group-type action button."""
+
+    def __init__(self, parent, state_manager, label, actions,
+                 on_color="#4CAF50", off_color="#cac9c8"):
+        super().__init__(parent)
+        self.state_manager = state_manager
+        self.label = label
+        self.actions = actions
+        self.on_color = on_color
+        self.off_color = off_color
+
+        self.button = tk.Button(self, text=label, command=self.apply_group)
+        self.button.pack(fill="x", expand=True)
+        self.default_button_bg = self.button.cget("background")
+        self.default_button_fg = self.button.cget("foreground")
+
+        self.log_callback = None
+        self.refresh()
+
+    def _is_active(self):
+        for action in self.actions:
+            dev = action.get("device", "")
+            pin = action.get("pin", "")
+            state = bool(action.get("state", False))
+            if self.state_manager.get_pin_state(dev, pin) != state:
+                return False
+        return True if self.actions else False
+
+    def refresh(self):
+        is_active = self._is_active()
+        if is_active:
+            self.button.configure(
+                background=self.on_color,
+                activebackground=self.on_color,
+                foreground="#ffffff",
+            )
+        else:
+            self.button.configure(
+                background=self.off_color,
+                activebackground=self.off_color,
+                foreground=self.default_button_fg,
+            )
+
+    def apply_group(self):
+        for action in self.actions:
+            dev = action.get("device", "")
+            pin = action.get("pin", "")
+            state = bool(action.get("state", False))
+            self.state_manager.set_pin_state(dev, pin, state)
+        if self.log_callback is not None:
+            self.log_callback(f"Group applied: {self.label}")
+        self.refresh()
+
+
+class SequenceControl(ttk.Frame):
+    """UI control for a sequence-type action button."""
+
+    def __init__(self, parent, state_manager, label, steps, disable_callback, enable_callback, log_callback=None):
+        super().__init__(parent)
+        self.state_manager = state_manager
+        self.label = label
+        self.steps = steps
+        self.disable_callback = disable_callback
+        self.enable_callback = enable_callback
+        self.log_callback = log_callback
+        self._running = False
+
+        self.button = tk.Button(self, text=label, command=self.start)
+        self.button.pack(fill="x", expand=True)
+
+    def start(self):
+        if self._running:
+            return
+        self._running = True
+        if self.log_callback is not None:
+            self.log_callback(f"Sequence started: {self.label}")
+        self.disable_callback()
+        self._run_step(0, time.monotonic())
+
+    def _run_step(self, index, start_time):
+        if index >= len(self.steps):
+            self._finish()
+            return
+        step = self.steps[index]
+        action = step.get("action", "")
+
+        if action == "set":
+            dev = step.get("device", "")
+            pin = step.get("pin", "")
+            state = bool(step.get("state", False))
+            self.state_manager.set_pin_state(dev, pin, state)
+            if self.log_callback is not None:
+                self.log_callback(f"Sequence {self.label}: set {dev} {pin} -> {state}")
+            self.after(10, lambda: self._run_step(index + 1, start_time))
+        elif action == "wait":
+            seconds = float(step.get("seconds", 0))
+            if self.log_callback is not None:
+                self.log_callback(f"Sequence {self.label}: wait {seconds}s")
+            self.after(int(seconds * 1000), lambda: self._run_step(index + 1, start_time))
+        elif action == "wait_for":
+            dev = step.get("device", "")
+            pin = step.get("pin", "")
+            desired = bool(step.get("state", False))
+            timeout = float(step.get("timeout_seconds", 0))
+            poll_ms = int(step.get("poll_ms", 200))
+            if self.state_manager.get_pin_state(dev, pin) == desired:
+                if self.log_callback is not None:
+                    self.log_callback(f"Sequence {self.label}: condition met {dev} {pin} == {desired}")
+                self.after(10, lambda: self._run_step(index + 1, start_time))
+                return
+            if timeout > 0 and (time.monotonic() - start_time) >= timeout:
+                if self.log_callback is not None:
+                    self.log_callback(f"Sequence {self.label}: timeout waiting for {dev} {pin}")
+                self._finish()
+                return
+            if self.log_callback is not None:
+                self.log_callback(f"Sequence {self.label}: waiting for {dev} {pin} == {desired}")
+            self.after(poll_ms, lambda: self._run_step(index, start_time))
+        else:
+            if self.log_callback is not None:
+                self.log_callback(f"Sequence {self.label}: unknown step")
+            self._finish()
+
+    def _finish(self):
+        self._running = False
+        self.enable_callback()
+        if self.log_callback is not None:
+            self.log_callback(f"Sequence finished: {self.label}")
 
 
 class PowerControl(ttk.Frame):
@@ -319,6 +451,7 @@ def create_control_panel_tab(notebook, state_manager):
 
     content_frame = ttk.Frame(control_panel)
     content_frame.pack(fill="both", expand=True)
+    content_frame.rowconfigure(0, weight=1)
 
     info = None
     if preset_info:
@@ -348,50 +481,96 @@ def create_control_panel_tab(notebook, state_manager):
     control_panel.update_preset_info = update_preset_info
 
 
-    def create_io_section():
-        existing = getattr(control_panel, "io_section", None)
+    def clear_section(name):
+        existing = getattr(control_panel, name, None)
         if existing is not None and existing.winfo_exists():
             existing.destroy()
+        setattr(control_panel, name, None)
+
+    def create_io_section(column_index, expand):
+        clear_section("io_section")
         section = ttk.LabelFrame(content_frame, text="I/O", padding=(6, 4))
-        section.pack(side="left", fill="y", expand=False, anchor="n", padx=6, pady=(0, 6))
+        section.grid(row=0, column=column_index, sticky="nsew" if expand else "ns", padx=6, pady=(0, 6))
         section.pack_propagate(True)
         control_panel.io_section = section
         return section
-    io_section = create_io_section()
 
-    def create_power_section():
-        existing = getattr(control_panel, "power_section", None)
-        if existing is not None and existing.winfo_exists():
-            existing.destroy()
-        right_column = getattr(control_panel, "right_column", None)
-        if right_column is None or not right_column.winfo_exists():
-            right_column = ttk.Frame(content_frame)
-            right_column.pack(side="right", fill="both", expand=True, padx=6, pady=(0, 6))
-            control_panel.right_column = right_column
+    def create_right_column(column_index, expand):
+        clear_section("right_column")
+        right_column = ttk.Frame(content_frame)
+        right_column.grid(row=0, column=column_index, sticky="nsew" if expand else "ns", padx=6, pady=(0, 6))
+        right_column.columnconfigure(0, weight=1)
+        control_panel.right_column = right_column
+        return right_column
+
+    def create_group_sequence_section(right_column, fill_space=False):
+        clear_section("group_sequence_section")
+        section = ttk.LabelFrame(right_column, text="Groups / Sequences", padding=(6, 4))
+        section.grid(row=0, column=0, sticky="nsew" if fill_space else "ew", pady=(0, 6))
+        section.columnconfigure(0, weight=1)
+        section.pack_propagate(True)
+        control_panel.group_sequence_section = section
+        return section
+
+    def create_log_section(right_column):
+        clear_section("log_section")
+        section = ttk.LabelFrame(right_column, text="Event Log", padding=(6, 4))
+        section.grid(row=1, column=0, sticky="nsew", pady=(0, 6))
+        section.columnconfigure(0, weight=1)
+        section.rowconfigure(0, weight=1)
+        text = tk.Text(section, height=6, wrap="word", state="disabled")
+        text.grid(row=0, column=0, sticky="nsew")
+        control_panel.log_section = section
+        control_panel.log_text = text
+        return section
+
+    def create_power_section(right_column):
+        clear_section("power_section")
         section = ttk.LabelFrame(right_column, text="Power", padding=(6, 4))
-        section.pack(side="bottom", anchor="se", fill="x")
+        section.grid(row=2, column=0, sticky="ew")
         section.columnconfigure(0, weight=1)
         section.pack_propagate(True)
         control_panel.power_section = section
         return section
 
-    power_section = create_power_section()
+    def log_event(message):
+        log_text = getattr(control_panel, "log_text", None)
+        if log_text is None:
+            return
+        timestamp = time.strftime("%H:%M:%S")
+        log_text.configure(state="normal")
+        log_text.insert("end", f"[{timestamp}] {message}\n")
+        log_text.see("end")
+        log_text.configure(state="disabled")
+
+    control_panel.log_event = log_event
+
+    def set_controls_state(state):
+        for output_control in getattr(control_panel, "output_controls", []):
+            output_control.button.configure(state=state)
+        for input_control in getattr(control_panel, "input_controls", []):
+            input_control.label.configure(state=state)
+        for power_control in getattr(control_panel, "power_controls", []):
+            power_control.button.configure(state=state)
+        for group_control in getattr(control_panel, "group_controls", []):
+            group_control.button.configure(state=state)
+        for sequence_control in getattr(control_panel, "sequence_controls", []):
+            sequence_control.button.configure(state=state)
 
     def build_io_controls(preset_path):
         output_controls = []
         input_controls = []
         power_controls = []
-        section = control_panel.io_section
-        for child in section.winfo_children():
-            child.destroy()
+        group_controls = []
+        sequence_controls = []
+        clear_section("io_section")
+        clear_section("power_section")
+        clear_section("group_sequence_section")
+        clear_section("log_section")
+        clear_section("right_column")
+        control_panel.log_text = None
 
-        power_container = control_panel.power_section
-        for child in power_container.winfo_children():
-            child.destroy()
-
-        power_row = ttk.Frame(power_container)
-        power_row.grid(row=0, column=0, sticky="ew")
-        power_row.columnconfigure(0, weight=1)
+        power_row = None
         power_index = 0
 
         configured_devices = set()
@@ -403,12 +582,51 @@ def create_control_panel_tab(notebook, state_manager):
         preset = load_preset_file(preset_path)
         layout = preset.get("layout", {})
         controls = layout.get("controls", [])
+        event_log_enabled = bool(preset.get("event_log", False))
+
+        has_io = any(c.get("type", "").lower() in {"output", "input", "break"} for c in controls)
+        has_power = any(c.get("type", "").lower() == "power" for c in controls)
+        has_group_seq = any(c.get("type", "").lower() in {"group", "sequence"} for c in controls)
+        has_right = has_power or has_group_seq or event_log_enabled
+
+        if has_io and not has_right:
+            content_frame.columnconfigure(0, weight=1)
+            content_frame.columnconfigure(1, weight=0)
+            io_section = create_io_section(column_index=0, expand=True)
+            right_column = None
+        elif has_right and not has_io:
+            content_frame.columnconfigure(0, weight=1)
+            content_frame.columnconfigure(1, weight=0)
+            io_section = None
+            right_column = create_right_column(column_index=0, expand=True)
+        else:
+            content_frame.columnconfigure(0, weight=0)
+            content_frame.columnconfigure(1, weight=1)
+            io_section = create_io_section(column_index=0, expand=False) if has_io else None
+            right_column = create_right_column(column_index=1, expand=True) if has_right else None
+
+        group_container = None
+        power_container = None
+        if right_column is not None:
+            right_column.rowconfigure(0, weight=1 if (has_group_seq and not event_log_enabled) else 0)
+            right_column.rowconfigure(1, weight=1 if event_log_enabled else 0)
+            if has_group_seq:
+                group_container = create_group_sequence_section(right_column, fill_space=not event_log_enabled)
+            if event_log_enabled:
+                create_log_section(right_column)
+            if has_power:
+                power_container = create_power_section(right_column)
+                power_row = ttk.Frame(power_container)
+                power_row.grid(row=0, column=0, sticky="ew")
+                power_row.columnconfigure(0, weight=1)
 
         for control in controls:
             control_type = control.get("type", "").lower()
             if control_type == "output":
+                if io_section is None:
+                    continue
                 output_widget = OutputControl(
-                    section,
+                    io_section,
                     state_manager,
                     control.get("device", ""),
                     control.get("pin", ""),
@@ -422,8 +640,10 @@ def create_control_panel_tab(notebook, state_manager):
                 output_widget.pack(fill="x", anchor="w", pady=2)
                 output_controls.append(output_widget)
             elif control_type == "input":
+                if io_section is None:
+                    continue
                 input_widget = InputControl(
-                    section,
+                    io_section,
                     state_manager,
                     control.get("device", ""),
                     control.get("pin", ""),
@@ -435,6 +655,8 @@ def create_control_panel_tab(notebook, state_manager):
                 input_widget.pack(fill="x", anchor="w", pady=2)
                 input_controls.append(input_widget)
             elif control_type == "power":
+                if power_container is None:
+                    continue
                 power_widget = PowerControl(
                     power_row,
                     state_manager,
@@ -452,17 +674,47 @@ def create_control_panel_tab(notebook, state_manager):
                 power_row.columnconfigure(power_index, weight=1)
                 power_index += 1
                 power_controls.append(power_widget)
+            elif control_type == "group":
+                if group_container is None:
+                    continue
+                group_widget = GroupControl(
+                    group_container,
+                    state_manager,
+                    control.get("label", control.get("id", "")),
+                    control.get("actions", []),
+                    on_color=control.get("on_color", "#4CAF50"),
+                    off_color=control.get("off_color", "#cac9c8"),
+                )
+                group_widget.log_callback = log_event
+                group_widget.pack(fill="x", anchor="w", pady=2)
+                group_controls.append(group_widget)
+            elif control_type == "sequence":
+                if group_container is None:
+                    continue
+                seq_widget = SequenceControl(
+                    group_container,
+                    state_manager,
+                    control.get("label", control.get("id", "")),
+                    control.get("steps", []),
+                    disable_callback=lambda: set_controls_state("disabled"),
+                    enable_callback=lambda: set_controls_state("normal"),
+                    log_callback=log_event,
+                )
+                seq_widget.pack(fill="x", anchor="w", pady=2)
+                sequence_controls.append(seq_widget)
             elif control_type == "break":
-                spacer = ttk.Frame(section, height=8)
+                if io_section is None:
+                    continue
+                spacer = ttk.Frame(io_section, height=8)
                 spacer.pack(fill="x", pady=4)
 
         control_panel.output_controls = output_controls
         control_panel.input_controls = input_controls
         control_panel.power_controls = power_controls
+        control_panel.group_controls = group_controls
+        control_panel.sequence_controls = sequence_controls
 
     def rebuild_from_preset(preset_path):
-        create_io_section()
-        create_power_section()
         build_io_controls(preset_path)
 
     control_panel.rebuild_from_preset = rebuild_from_preset
@@ -478,6 +730,12 @@ def create_control_panel_tab(notebook, state_manager):
             input_control.refresh()
 
     control_panel.refresh_input_controls = refresh_input_controls
+
+    def refresh_group_controls():
+        for group_control in getattr(control_panel, "group_controls", []):
+            group_control.refresh()
+
+    control_panel.refresh_group_controls = refresh_group_controls
 
     def refresh_power_controls():
         for power_control in getattr(control_panel, "power_controls", []):

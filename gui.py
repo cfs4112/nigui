@@ -52,7 +52,7 @@ class StateManager:
 
 root = tk.Tk()
 root.title("Control Panel")
-root.minsize(600, 400)
+root.minsize(240, 400)
 
 def get_selected_preset_path(config_path="config.json"):
     if os.path.exists(config_path):
@@ -112,6 +112,10 @@ def refresh_all_tabs(device, pin, value):
             tab_widget.refresh_input_controls()
         if hasattr(tab_widget, "refresh_power_controls"):
             tab_widget.refresh_power_controls()
+        if hasattr(tab_widget, "refresh_group_controls"):
+            tab_widget.refresh_group_controls()
+        if hasattr(tab_widget, "log_event"):
+            tab_widget.log_event(f"State changed: {device} {pin} -> {value}")
 
 state_manager.register_update_callback(refresh_all_tabs)
 

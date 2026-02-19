@@ -5,6 +5,7 @@
 		"width": 900,
 		"height": 600
 	},
+	"event_log": true,
 	"layout": {
 		"controls": [
 			{
@@ -118,6 +119,11 @@
 						"device": "Dev1",
 						"pin": "p0.1",
 						"state": true
+					},
+					{
+						"device": "Dev2",
+						"pin": "p0.1",
+						"state": true
 					}
 				]
 			},
@@ -141,7 +147,8 @@
 						"device": "Dev1",
 						"pin": "p1.5",
 						"state": true,
-						"timeout_seconds": 10
+						"timeout_seconds": 10,
+						"poll_ms": 200
 					},
 					{
 						"action": "set",

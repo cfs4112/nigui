@@ -1,0 +1,199 @@
+{
+	"title": "Layout Stress Test",
+	"info": "Preset designed to stress-test dynamic layout scaling.",
+	"window": {
+		"width": 1200,
+		"height": 900
+	},
+	"event_log": true,
+	"layout": {
+		"controls": [
+			{
+				"id": "out_01",
+				"type": "output",
+				"device": "Dev1",
+				"pin": "p0.0",
+				"label": "Output 01",
+				"on_color": "#4CAF50",
+				"off_color": "#CAC9C8",
+				"secondary_label": {"on": "ON", "off": "OFF"}
+			},
+			{
+				"id": "out_02",
+				"type": "output",
+				"device": "Dev1",
+				"pin": "p0.1",
+				"label": "Output 02",
+				"on_color": "#4CAF50",
+				"off_color": "#CAC9C8",
+				"secondary_label": {"on": "RUN", "off": "STOP"}
+			},
+			{
+				"id": "out_03",
+				"type": "output",
+				"device": "Dev1",
+				"pin": "p0.2",
+				"label": "Output 03",
+				"on_color": "#4CAF50",
+				"off_color": "#CAC9C8"
+			},
+			{
+				"id": "in_01",
+				"type": "input",
+				"device": "Dev1",
+				"pin": "p1.0",
+				"label": "Input 01",
+				"active_level": "ACTIVE_HIGH",
+				"on_color": "#2196F3",
+				"off_color": "#CAC9C8"
+			},
+			{
+				"id": "in_02",
+				"type": "input",
+				"device": "Dev1",
+				"pin": "p1.1",
+				"label": "Input 02",
+				"active_level": "ACTIVE_LOW",
+				"on_color": "#9C27B0",
+				"off_color": "#CAC9C8"
+			},
+			{
+				"id": "break_01",
+				"type": "break"
+			},
+			{
+				"id": "out_04",
+				"type": "output",
+				"device": "Dev1",
+				"pin": "p0.3",
+				"label": "Output 04",
+				"on_color": "#4CAF50",
+				"off_color": "#CAC9C8",
+				"secondary_label": {"on": "HIGH", "off": "LOW"}
+			},
+			{
+				"id": "out_05",
+				"type": "output",
+				"device": "Dev1",
+				"pin": "p0.4",
+				"label": "Output 05",
+				"on_color": "#4CAF50",
+				"off_color": "#CAC9C8"
+			},
+			{
+				"id": "out_06",
+				"type": "output",
+				"device": "Dev1",
+				"pin": "p0.5",
+				"label": "Output 06",
+				"on_color": "#4CAF50",
+				"off_color": "#CAC9C8"
+			},
+			{
+				"id": "out_07",
+				"type": "output",
+				"device": "Dev1",
+				"pin": "p0.6",
+				"label": "Output 07",
+				"on_color": "#4CAF50",
+				"off_color": "#CAC9C8"
+			},
+			{
+				"id": "out_08",
+				"type": "output",
+				"device": "Dev1",
+				"pin": "p0.7",
+				"label": "Output 08",
+				"on_color": "#4CAF50",
+				"off_color": "#CAC9C8"
+			},
+			{
+				"id": "break_02",
+				"type": "break"
+			},
+			{
+				"id": "in_03",
+				"type": "input",
+				"device": "Dev1",
+				"pin": "p1.2",
+				"label": "Input 03",
+				"active_level": "ACTIVE_HIGH",
+				"on_color": "#FF9800",
+				"off_color": "#CAC9C8"
+			},
+			{
+				"id": "in_04",
+				"type": "input",
+				"device": "Dev1",
+				"pin": "p1.3",
+				"label": "Input 04",
+				"active_level": "ACTIVE_LOW",
+				"on_color": "#00BCD4",
+				"off_color": "#CAC9C8"
+			},
+			{
+				"id": "group_01",
+				"type": "group",
+				"label": "Group A: Enable",
+				"actions": [
+					{"device": "Dev1", "pin": "p0.0", "state": true},
+					{"device": "Dev1", "pin": "p0.1", "state": true},
+					{"device": "Dev1", "pin": "p0.2", "state": true}
+				]
+			},
+			{
+				"id": "group_02",
+				"type": "group",
+				"label": "Group B: Disable",
+				"actions": [
+					{"device": "Dev1", "pin": "p0.3", "state": false},
+					{"device": "Dev1", "pin": "p0.4", "state": false},
+					{"device": "Dev1", "pin": "p0.5", "state": false}
+				]
+			},
+			{
+				"id": "seq_01",
+				"type": "sequence",
+				"label": "Sequence A",
+				"steps": [
+					{"action": "set", "device": "Dev1", "pin": "p2.0", "state": true},
+					{"action": "wait", "seconds": 1},
+					{"action": "set", "device": "Dev1", "pin": "p2.0", "state": false}
+				]
+			},
+			{
+				"id": "seq_02",
+				"type": "sequence",
+				"label": "Sequence B",
+				"steps": [
+					{"action": "set", "device": "Dev1", "pin": "p0.6", "state": true},
+					{"action": "wait", "seconds": 2},
+					{"action": "wait_for", "device": "Dev1", "pin": "p1.0", "state": true, "timeout_seconds": 5, "poll_ms": 200},
+					{"action": "set", "device": "Dev1", "pin": "p0.6", "state": false}
+				]
+			},
+			{
+				"id": "power_01",
+				"type": "power",
+				"device": "Dev1",
+				"pin": "p2.0",
+				"label": "Main 24V",
+				"on_color": "#FF7043",
+				"off_color": "#CAC9C8",
+				"cooldown_seconds": 10,
+				"secondary_label": {"on": "ARMED", "off": "SAFE"}
+			},
+			{
+				"id": "power_02",
+				"type": "power",
+				"device": "Dev1",
+				"pin": "p2.1",
+				"label": "Aux 12V",
+				"on_color": "#E91E63",
+				"off_color": "#CAC9C8",
+				"cooldown_seconds": 8,
+				"secondary_label": {"on": "ON", "off": "OFF"}
+			}
+		]
+	}
+}
