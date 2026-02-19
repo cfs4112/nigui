@@ -33,6 +33,17 @@ def create_device_tab(notebook, dev, state_manager):
             state = states.get(key, False)
             label.configure(bg=ON_COLOR if state else OFF_COLOR)
 
+    def refresh_from_state():
+        """Refresh UI from the current state manager values."""
+        for port in range(3):
+            for bit in range(8):
+                key = f"p{port}.{bit}"
+                current_state = state_manager.get_pin_state(dev, key)
+                states[key] = current_state
+                if key in button_vars and key not in staged_changes:
+                    button_vars[key].set(1 if current_state else 0)
+        update_diagram_colors()
+
     def toggle_signal(port, bit, var):
         """Stage a signal change with visual indication"""
         key = f"p{port}.{bit}"
@@ -197,5 +208,7 @@ def create_device_tab(notebook, dev, state_manager):
     # Device diagram button
     diagram_button = ttk.Button(buttons_frame, text="Open Device Diagram", command=open_diagram_window)
     diagram_button.pack(side="left")
+
+    dev_tab.refresh_from_state = refresh_from_state
 
 

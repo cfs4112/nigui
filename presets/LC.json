@@ -1,0 +1,21 @@
+{
+	"title": "Lion Preset",
+    "layout": {
+		"controls": [
+			{
+				"id": "example_output",
+				"type": "output",
+				"device": "Dev1",
+				"pin": "p0.0",
+				"label": "Example",
+				"on_color": "#4CAF50",
+				"off_color": "#CAC9C8",
+				"secondary_label": {
+					"on": "ON",
+					"off": "OFF"
+				}
+			}
+        ]
+        
+    }
+}

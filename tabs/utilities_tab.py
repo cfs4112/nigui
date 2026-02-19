@@ -3,8 +3,9 @@ from tkinter import ttk
 import json
 import os
 from .device_tab import create_device_tab
+from .control_panel_tab import load_preset_data
 
-def setup_settings_frame(frame, root, notebook, state_manager):
+def setup_settings_frame(frame, root, notebook, state_manager, control_panel=None):
     # Load config
     config_file = 'config.json'
     if os.path.exists(config_file):
@@ -92,6 +93,16 @@ def setup_settings_frame(frame, root, notebook, state_manager):
         config = {'devices': devices, 'selected_preset': selected_preset, 'max_devices': max_devices}
         with open(config_file, 'w') as f:
             json.dump(config, f, indent=2)
+        state_manager.set_current_preset(selected_preset)
+        if control_panel is not None:
+            preset_path = os.path.join('presets', selected_preset)
+            preset_data = load_preset_data(preset_path)
+            if hasattr(control_panel, "update_preset_title"):
+                control_panel.update_preset_title(preset_data["title"])
+            if hasattr(control_panel, "update_preset_info"):
+                control_panel.update_preset_info(preset_data["info"])
+            if hasattr(control_panel, "rebuild_from_preset"):
+                control_panel.rebuild_from_preset(preset_path)
         # Remove existing device tabs
         for tab_id in notebook.tabs():
             tab_text = notebook.tab(tab_id, "text")

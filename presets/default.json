@@ -1,0 +1,114 @@
+{
+	"title": "Default Preset",
+	"info": "This is the default preset. It exists as an example for other presets.",
+	"layout": {
+		"controls": [
+			{
+				"id": "example_output",
+				"type": "output",
+				"device": "Dev1",
+				"pin": "p0.0",
+				"label": "Example",
+				"on_color": "#4CAF50",
+				"off_color": "#CAC9C8",
+				"secondary_label": {
+					"on": "ON",
+					"off": "OFF"
+				}
+			},
+            {
+				"id": "example_output_2",
+				"type": "output",
+				"device": "Dev1",
+				"pin": "p0.1",
+				"label": "Example 2",
+				"on_color": "#4CAF50",
+				"off_color": "#CAC9C8",
+				"secondary_label": {
+					"on": "RUNNING",
+					"off": "STOPPED"
+				}
+			},
+            {
+				"id": "example_output_3",
+				"type": "output",
+				"device": "Dev2",
+				"pin": "p0.1",
+				"label": "Example 3",
+				"on_color": "#4CAF50",
+				"off_color": "#CAC9C8"
+			},
+			{
+				"id": "example_input",
+				"type": "input",
+				"device": "Dev1",
+				"pin": "p1.5",
+				"label": "Door Closed",
+				"active_level": "ACTIVE_LOW",
+				"on_color": "#4CAF50",
+				"off_color": "#CAC9C8"
+			},
+			{
+				"id": "example_power",
+				"type": "power",
+				"device": "Dev1",
+				"pin": "p2.0",
+				"label": "Main 24V",
+				"on_color": "#FF7043",
+				"off_color": "#CAC9C8",
+				"cooldown_seconds": 10,
+				"secondary_label": {
+					"on": "ARMED",
+					"off": "SAFE"
+				}
+			},
+			{
+				"id": "example_group",
+				"type": "group",
+				"label": "Enable All Outputs",
+				"actions": [
+					{
+						"device": "Dev1",
+						"pin": "p0.0",
+						"state": true
+					},
+					{
+						"device": "Dev1",
+						"pin": "p0.1",
+						"state": true
+					}
+				]
+			},
+			{
+				"id": "example_sequence",
+				"type": "sequence",
+				"label": "Start Sequence",
+				"steps": [
+					{
+						"action": "set",
+						"device": "Dev1",
+						"pin": "p2.0",
+						"state": true
+					},
+					{
+						"action": "wait",
+						"seconds": 3
+					},
+					{
+						"action": "wait_for",
+						"device": "Dev1",
+						"pin": "p1.5",
+						"state": true,
+						"timeout_seconds": 10
+					},
+					{
+						"action": "set",
+						"device": "Dev1",
+						"pin": "p2.0",
+						"state": false
+					}
+				]
+			}
+		]
+	}
+}
